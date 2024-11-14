@@ -391,9 +391,9 @@ void getQ0(const py::array_t<double> phiv, const py::array_t<double> thetav,
   assert(phiv.ndim() == 1);
   assert(resv.ndim() == 1);
 
-  const std::span phi(phiv.data(), phiv.size());
-  const std::span theta(thetav.data(), thetav.size());
-  const std::span res(resv.mutable_data(), resv.size());
+  const auto phi = make_cspan(phiv);
+  const auto theta = make_cspan(thetav);
+  const auto res = make_span(resv);
 
   const size_t p = phi.size();
   const size_t q = theta.size();
@@ -546,10 +546,10 @@ py::array_t<double> arima_gradtrans(const py::array_t<double> xv,
   assert(armav.ndim() == 1);
 
   constexpr double eps = 1e-3;
-  const std::span arma(armav.data(), armav.size());
-  const std::span x(xv.data(), xv.size());
-
+  const auto arma = make_cspan(armav);
+  const auto x = make_cspan(xv);
   const size_t n = x.size();
+
   const int mp = arma[0];
   const int mq = arma[1];
   const int msp = arma[2];
@@ -559,7 +559,7 @@ py::array_t<double> arima_gradtrans(const py::array_t<double> xv,
   std::array<double, 100> w3;
 
   py::array_t<double> outv({n, n});
-  auto out = outv.mutable_data();
+  const auto out = make_span(outv);
   for (size_t i = 0; i < n; ++i) {
     for (size_t j = 0; j < n; ++j) {
       out[i * n + j] = (i == j) ? 1.0 : 0.0;
