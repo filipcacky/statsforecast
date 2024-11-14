@@ -379,9 +379,9 @@ void getQ0(const py::array_t<double> phiv, const py::array_t<double> thetav,
   assert(phiv.ndim() == 1);
   assert(resv.ndim() == 1);
 
-  const std::span<double> phi(phiv.data(), phiv.size());
-  const std::span<double> theta(thetav.data(), thetav.size());
-  std::span<double> res(resv.mutable_data(), resv.size());
+  const std::span phi(phiv.data(), phiv.size());
+  const std::span theta(thetav.data(), thetav.size());
+  const std::span res(resv.mutable_data(), resv.size());
 
   const size_t p = phi.size();
   const size_t q = theta.size();
@@ -530,49 +530,61 @@ void getQ0(const py::array_t<double> phiv, const py::array_t<double> thetav,
 
 py::array_t<double> arima_gradtrans(const py::array_t<double> xv,
                                     const py::array_t<int> armav) {
-  constexpr double eps = 1e-3;
-  auto x = xv.data();
-  auto arma = armav.data();
-  int n = static_cast<int>(xv.size());
-  int mp = arma[0];
-  int mq = arma[1];
-  int msp = arma[2];
+  assert(xv.ndim() == 1);
+  assert(armav.ndim() == 1);
 
-  auto w1 = std::array<double, 100>();
-  auto w2 = std::array<double, 100>();
-  auto w3 = std::array<double, 100>();
+  constexpr double eps = 1e-3;
+  const std::span arma(armav.data(), armav.size());
+  const std::span x(xv.data(), xv.size());
+
+  const size_t n = x.size();
+  const int mp = arma[0];
+  const int mq = arma[1];
+  const int msp = arma[2];
+
+  std::array<double, 100> w1;
+  std::array<double, 100> w2;
+  std::array<double, 100> w3;
+
   py::array_t<double> outv({n, n});
   auto out = outv.mutable_data();
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < n; ++j) {
+  for (size_t i = 0; i < n; ++i) {
+    for (size_t j = 0; j < n; ++j) {
       out[i * n + j] = (i == j) ? 1.0 : 0.0;
     }
   }
+
   if (mp > 0) {
-    std::copy(x, x + mp, w1.begin());
-    partrans(mp, w1.data(), w2.data());
-    for (int i = 0; i < mp; ++i) {
+    std::copy(x.begin(), x.begin() + mp, w1.begin());
+    partrans(mp, w1, w2);
+
+    for (size_t i = 0; i < mp; ++i) {
       w1[i] += eps;
-      partrans(mp, w1.data(), w3.data());
-      for (int j = 0; j < mp; ++j) {
+      partrans(mp, w1, w3);
+
+      for (size_t j = 0; j < mp; ++j) {
         out[n * i + j] = (w3[j] - w2[j]) / eps;
       }
       w1[i] -= eps;
     }
   }
+
   if (msp > 0) {
-    int v = mp + mq;
-    std::copy(x + v, x + v + msp, w1.begin());
+    const size_t v = mp + mq;
+    std::copy(x.begin() + v, x.begin() + v + msp, w1.begin());
     partrans(msp, w1.data(), w2.data());
-    for (int i = 0; i < msp; ++i) {
+
+    for (size_t i = 0; i < msp; ++i) {
       w1[i] += eps;
       partrans(msp, w1.data(), w3.data());
-      for (int j = 0; j < msp; ++j) {
+
+      for (size_t j = 0; j < msp; ++j) {
         out[n * (i + v) + j + v] = (w3[j] - w2[j]) / eps;
       }
       w1[i] -= eps;
     }
   }
+
   return outv;
 }
 
